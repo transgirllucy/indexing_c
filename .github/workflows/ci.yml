@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        arch: [x64, arm64]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up build environment
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo apt-get install -y build-essential libsqlite3-dev;
+          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            choco install mingw --version=8.1.0; # Install MinGW
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            brew install sqlite; # Install SQLite
+          fi
+
+      - name: Build the project
+        run: |
+          ./autogen.sh
+          ./configure
+          make
+
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag: ${{ github.event.release.tag }}
+          files: file_indexer
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
